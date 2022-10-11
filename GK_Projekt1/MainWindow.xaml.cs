@@ -27,6 +27,7 @@ namespace GK_Projekt1
         private WriteableBitmap _wb;
         public const int dpiX = 96;
         public const int dpiY = 96;
+        private Point _lastMousePosition;
 
         public List<Polygon> Polygons
         {
@@ -99,14 +100,16 @@ namespace GK_Projekt1
         
         private void Canvas1_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            var point = e.GetPosition(Canvas1);
             if (Status.Mode == Modes.Adding)
             {
                 _status.CurrentPolygon = new Polygon(Canvas1);
+                _status.CurrentPolygon.Color = PolyColors.colors[_status.PolyCount++ % PolyColors.count];
                 DrawPoint(new Point(e.GetPosition(Canvas1).X, e.GetPosition(Canvas1).Y), Colors.Red, Status.CurrentPolygon._dotSize);
                 Status.CurrentPolygon.Vertices.Add(new Point(e.GetPosition(Canvas1).X, e.GetPosition(Canvas1).Y));
                 _status.Mode = Modes.AddingInProgress;
             }
-            else if(Status.Mode == Modes.AddingInProgress)
+            else if (Status.Mode == Modes.AddingInProgress)
             {
                 if (Status.CurrentPolygon.IsInsideFirstVertex(new Point(e.GetPosition(Canvas1).X, e.GetPosition(Canvas1).Y)))
                 {
@@ -126,11 +129,36 @@ namespace GK_Projekt1
             {
 
             }
+            else if (Status.Mode == Modes.Idle)
+            {
+                for (var i = 0; i < Polygons.Count; i++)
+                {
+
+                    var p = Polygons[i].IsInsideAnyVertex(point);
+                    if (p != new Point(-1, -1))
+                    {
+                        _status.Mode = Modes.MovingVertex;
+                        _status.CurrentPolygon = Polygons[i];
+                        _status.VertexInMove = Status.CurrentPolygon.Vertices.IndexOf(p);
+                        break;
+                    }
+                    var pair = Polygons[i].IsInsideAnyLine(point);
+                    if (pair.Item1 != new Point(-1, -1))
+                    {
+                        _status.Mode = Modes.MovingEdge;
+                        _status.CurrentPolygon = Polygons[i];
+                        _status.EdgeInMove = (Status.CurrentPolygon.Vertices.IndexOf(pair.Item1), Status.CurrentPolygon.Vertices.IndexOf(pair.Item2));
+                        break;
+                    }
+                }
+            }
+            _lastMousePosition = point;
             e.Handled = true;
         }
 
         private void Canvas1_MouseMove(object sender, MouseEventArgs e)
         {
+            var point = e.GetPosition(Canvas1);
             if (Status.Mode == Modes.AddingInProgress)
             {
                 Canvas1.Children.Clear();
@@ -138,9 +166,9 @@ namespace GK_Projekt1
                     i.Draw(Canvas1);
 
                 if (Status.BresenhofEnabled == false)
-                    _status.Ray = DrawLine(Status.CurrentPolygon.Vertices.Last(), new Point(e.GetPosition(Canvas1).X, e.GetPosition(Canvas1).Y), Colors.Black, Status.CurrentPolygon._lineSize);
+                    _status.Ray = DrawLine(Status.CurrentPolygon.Vertices.Last(), new Point(e.GetPosition(Canvas1).X, e.GetPosition(Canvas1).Y), PolyColors.colors[(_status.PolyCount - 1) % PolyColors.count], Status.CurrentPolygon._lineSize);
                 else
-                    _status.BresenhofDump = DrawLineBresenhof(Status.CurrentPolygon.Vertices.Last(), new Point(e.GetPosition(Canvas1).X, e.GetPosition(Canvas1).Y), Colors.Black);
+                    _status.BresenhofDump = DrawLineBresenhof(Status.CurrentPolygon.Vertices.Last(), new Point(e.GetPosition(Canvas1).X, e.GetPosition(Canvas1).Y), PolyColors.colors[(_status.PolyCount - 1) % PolyColors.count]);
                 Status.CurrentPolygon.Draw(Canvas1);
                 foreach (var i in Canvas1.Children)
                     if (i.GetType() == typeof(Line))
@@ -154,6 +182,21 @@ namespace GK_Projekt1
                         ((Ellipse)i).MouseRightButtonDown += Canvas1_MouseRightButtonDown;
                     }
             }
+            else if(Status.Mode == Modes.MovingVertex)
+            {
+                _status.CurrentPolygon.Vertices[Status.VertexInMove] = point;
+                RedrawCanvas(Canvas1);
+            }
+            else if(Status.Mode == Modes.MovingEdge)
+            {
+                // Moving one polygon's edge sometimes grab random polygon's edge :/
+                var ret = new Point(_status.CurrentPolygon.Vertices[Status.EdgeInMove.Item1].X - (_lastMousePosition.X - point.X), _status.CurrentPolygon.Vertices[Status.EdgeInMove.Item1].Y - (_lastMousePosition.Y - point.Y));
+                _status.CurrentPolygon.Vertices[Status.EdgeInMove.Item1] = ret;
+                ret = new Point(_status.CurrentPolygon.Vertices[Status.EdgeInMove.Item2].X - (_lastMousePosition.X - point.X), _status.CurrentPolygon.Vertices[Status.EdgeInMove.Item2].Y - (_lastMousePosition.Y - point.Y));
+                _status.CurrentPolygon.Vertices[Status.EdgeInMove.Item2] = ret;
+                RedrawCanvas(Canvas1);
+            }
+            _lastMousePosition = point;
             e.Handled = true;
         }
 
@@ -177,12 +220,25 @@ namespace GK_Projekt1
             _status.BresenhofEnabled = false;
         }
 
+        private void Canvas1_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (Status.Mode == Modes.MovingVertex || Status.Mode == Modes.MovingEdge || Status.Mode == Modes.Moving)
+            {
+                _status.Mode = Modes.Idle;
+                _status.CurrentPolygon = null;
+                _status.VertexInMove = -1;
+                _status.EdgeInMove = (-1, -1);
+            }
+        }
+
         public void CancelInserting(RoutedEventArgs e)
         {
             if (Status.Mode != Modes.Adding)
             {
-                Canvas1.Children.RemoveRange(Canvas1.Children.Count - Status.CurrentPolygon.Vertices.Count * 2, Status.CurrentPolygon.Vertices.Count * 2);
+                _status.BresenhofDump = null;
                 _status.CurrentPolygon = null;
+                _status.PolyCount--;
+                RedrawCanvas(Canvas1);
                 _status.Mode = Modes.Idle;
             }
             e.Handled = true;
@@ -193,17 +249,20 @@ namespace GK_Projekt1
             canvas.Children.Clear();
             foreach (var i in _polygons)
                 i.Draw(canvas);
-            Status.CurrentPolygon.Draw(canvas);
+            if(Status.CurrentPolygon != null)
+                Status.CurrentPolygon.Draw(canvas);
             foreach (var i in Canvas1.Children)
                 if (i.GetType() == typeof(Line))
                 {
                     ((Line)i).MouseLeftButtonDown += Canvas1_MouseLeftButtonDown;
-                    ((Line)i).MouseLeftButtonDown += Canvas1_MouseRightButtonDown;
+                    ((Line)i).MouseRightButtonDown += Canvas1_MouseRightButtonDown;
+                    ((Line)i).MouseLeftButtonUp += Canvas1_MouseLeftButtonUp;
                 }
                 else
                 {
                     ((Ellipse)i).MouseLeftButtonDown += Canvas1_MouseLeftButtonDown;
-                    ((Ellipse)i).MouseLeftButtonDown += Canvas1_MouseRightButtonDown;
+                    ((Ellipse)i).MouseRightButtonDown += Canvas1_MouseRightButtonDown;
+                    ((Ellipse)i).MouseLeftButtonUp += Canvas1_MouseLeftButtonUp;
                 }
         }
 
@@ -262,25 +321,31 @@ namespace GK_Projekt1
             }
             for (var i = 0; i < ret.Count; i++)
             {
-                switch(orientedSet.quartersToRotate)
+                var x = Canvas.GetLeft(ret[i]);
+                var y = Canvas.GetTop(ret[i]);
+                switch (orientedSet.quartersToRotate)
                 {
                     case 0:
                         Canvas.SetTop(ret[i], y1 - (Canvas.GetTop(ret[i]) - y1));
                         break;
                     case 1:
-                        Canvas.SetTop(ret[i], );
-                        Canvas.SetLeft(ret[i], );
+                        Canvas.SetTop(ret[i], y1 + x1 - x);
+                        Canvas.SetLeft(ret[i], x1 - y1 + y);
                         break;
                     case 2:
-
+                        Canvas.SetTop(ret[i], y2 - x2 + x);
+                        Canvas.SetLeft(ret[i], x2 - y2 + y);
                         break;
                     case 4:
                         Canvas.SetTop(ret[i], y2 + (y2 - Canvas.GetTop(ret[i])));
                         break;
                     case 5:
+                        Canvas.SetTop(ret[i], y2 + x2 - x);
+                        Canvas.SetLeft(ret[i], x2 - y2 + y);
                         break;
                     case 6:
-
+                        Canvas.SetTop(ret[i], y1 - x1 + x);
+                        Canvas.SetLeft(ret[i], x1 - y1 + y);
                         break;
                 }
             }
@@ -424,6 +489,9 @@ namespace GK_Projekt1
         public Modes Mode;
         public Line Ray;
         public List<Ellipse> BresenhofDump;
+        public int VertexInMove;
+        public (int, int) EdgeInMove;
+        public int PolyCount;
     }
 
     public enum Modes

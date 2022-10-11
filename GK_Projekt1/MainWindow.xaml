@@ -37,7 +37,7 @@
                 <RadioButton Click="RadioButton_Click_1" Grid.Row="1" Grid.Column="1" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="10,5,10,5" Content="Off" IsChecked="True"/>
             </Grid>
         </StackPanel>
-            <Canvas MouseWheel="Canvas1_MouseWheel" x:Name="Canvas1" MouseMove="Canvas1_MouseMove" MouseLeftButtonDown="Canvas1_MouseLeftButtonDown" MouseRightButtonDown="Canvas1_MouseRightButtonDown" Grid.Row="1">
+            <Canvas MouseLeftButtonUp="Canvas1_MouseLeftButtonUp" MouseWheel="Canvas1_MouseWheel" x:Name="Canvas1" MouseMove="Canvas1_MouseMove" MouseLeftButtonDown="Canvas1_MouseLeftButtonDown" MouseRightButtonDown="Canvas1_MouseRightButtonDown" Grid.Row="1">
                 
             </Canvas>
         <!--<DockPanel x:Name="DockPanel1" Grid.Row="1">

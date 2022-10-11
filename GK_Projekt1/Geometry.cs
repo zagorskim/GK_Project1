@@ -26,11 +26,13 @@ namespace GK_Projekt1
         public Canvas _canvas;
         public bool _finished = false;
         public int _clickAccuracy = 3;
+        public List<(Polygon, (int, int), (int, int))> _relations;
 
         public Polygon(Canvas canvas)
         {
             _vertices = new List<System.Windows.Point>();
             _canvas = canvas;
+            _relations = new List<(Polygon, (int, int), (int, int))>();
         }
 
         public List<System.Windows.Point> Vertices
@@ -109,12 +111,12 @@ namespace GK_Projekt1
             return false;
         }
 
-        public bool IsInsideAnyLine(Point p)
+        public (Point, Point) IsInsideAnyLine(Point p)
         {
-            for (var i = 0; i < _vertices.Count - 1; i++)
-                if (IsInsideLine(p, _vertices[i], _vertices[i + 1]))
-                    return true;
-            return false;
+            for (var i = 0; i < _vertices.Count; i++)
+                if (IsInsideLine(p, _vertices[i], _vertices[(i + 1) % _vertices.Count]))
+                    return (_vertices[i], _vertices[(i + 1) % _vertices.Count]);
+            return (new Point(-1, -1), new Point(-1, -1));
         }
 
         public Point IsInsideAnyVertex(Point p)

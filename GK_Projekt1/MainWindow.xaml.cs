@@ -150,6 +150,14 @@ namespace GK_Projekt1
                         _status.EdgeInMove = (Status.CurrentPolygon.Vertices.IndexOf(pair.Item1), Status.CurrentPolygon.Vertices.IndexOf(pair.Item2));
                         break;
                     }
+                    var solver = new InsideOutsideLib();
+                    var poly = solver.isInside(Polygons[i], point); 
+                    if( poly != null)
+                    {
+                        _status.Mode = Modes.Moving;
+                        _status.CurrentPolygon = Polygons[i];
+                        break;
+                    }
                 }
             }
             _lastMousePosition = point;
@@ -196,6 +204,15 @@ namespace GK_Projekt1
                 _status.CurrentPolygon.Vertices[Status.EdgeInMove.Item2] = ret;
                 RedrawCanvas(Canvas1);
             }
+            else if(Status.Mode == Modes.Moving)
+            {
+                for(var i = 0; i < _status.CurrentPolygon.Vertices.Count; i++)
+                {
+                    var ret = new Point(_status.CurrentPolygon.Vertices[i].X - (_lastMousePosition.X - point.X), _status.CurrentPolygon.Vertices[i].Y - (_lastMousePosition.Y - point.Y));
+                    _status.CurrentPolygon.Vertices[i] = ret;
+                }
+                RedrawCanvas(Canvas1);
+            }
             _lastMousePosition = point;
             e.Handled = true;
         }
@@ -237,10 +254,11 @@ namespace GK_Projekt1
             {
                 _status.BresenhofDump = null;
                 _status.CurrentPolygon = null;
-                _status.PolyCount--;
                 RedrawCanvas(Canvas1);
                 _status.Mode = Modes.Idle;
             }
+            if(Status.Mode == Modes.AddingInProgress)
+                _status.PolyCount--;
             e.Handled = true;
         }
 

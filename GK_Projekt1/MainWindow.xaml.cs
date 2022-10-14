@@ -89,25 +89,62 @@ namespace GK_Projekt1
         private void Button_Click(object sender, RoutedEventArgs e)
         {
             if (Status.Mode != Modes.AddingInProgress)
+            {
                 _status.Mode = Modes.Adding;
+                btnNewPoly.Background = (Brush)new BrushConverter().ConvertFrom("#bee6fd");
+                btnDelete.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");;
+                btnNewVertex.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");;
+                btnMove.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");;
+            }
         }
 
         private void Button_Click_1(object sender, RoutedEventArgs e)
         {
-            if(Status.Mode != Modes.AddingInProgress)
-                _status.Mode = Modes.Deletion;
+            if (Status.Mode == Modes.AddingInProgress)
+            {
+                CancelInserting(e);
+            }
+            _status.Mode = Modes.Deletion;
+            btnDelete.Background = (Brush)new BrushConverter().ConvertFrom("#bee6fd");
+            btnNewVertex.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");;
+            btnNewPoly.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");;
+            btnMove.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");;
         }
-        
+
+        private void Button_Click_3(object sender, RoutedEventArgs e)
+        {
+            if (Status.Mode == Modes.AddingInProgress)
+                CancelInserting(e);
+            _status.Mode = Modes.AddingVertex;
+            btnNewVertex.Background = (Brush)new BrushConverter().ConvertFrom("#bee6fd");
+            btnDelete.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");;
+            btnNewPoly.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");;
+            btnMove.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");;
+        }
+
+
+        private void btnMove_Click(object sender, RoutedEventArgs e)
+        {
+            if (Status.Mode == Modes.AddingInProgress)
+                CancelInserting(e);
+            _status.Mode = Modes.Idle;
+            btnMove.Background = (Brush)new BrushConverter().ConvertFrom("#bee6fd");
+            btnDelete.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");;
+            btnNewPoly.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");;
+            btnNewVertex.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");;
+        }
+
         private void Canvas1_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             var point = e.GetPosition(Canvas1);
             if (Status.Mode == Modes.Adding)
             {
                 _status.CurrentPolygon = new Polygon(Canvas1);
-                _status.CurrentPolygon.Color = PolyColors.colors[_status.PolyCount++ % PolyColors.count];
+                _status.CurrentPolygon.Color = PolyColors.colors[_status.PolyCount++ % PolyColors.colors.Count()];
                 DrawPoint(new Point(e.GetPosition(Canvas1).X, e.GetPosition(Canvas1).Y), Colors.Red, Status.CurrentPolygon._dotSize);
                 Status.CurrentPolygon.Vertices.Add(new Point(e.GetPosition(Canvas1).X, e.GetPosition(Canvas1).Y));
                 _status.Mode = Modes.AddingInProgress;
+                btnNewPoly.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");;
             }
             else if (Status.Mode == Modes.AddingInProgress)
             {
@@ -115,19 +152,28 @@ namespace GK_Projekt1
                 {
                     _polygons.Add(Status.CurrentPolygon);
                     _polygons.Last()._finished = true;
-                    _status.Mode = Modes.Idle;
+                    _status.CurrentPolygon = null;
+                    _status.Mode = Modes.Adding;
+                    btnNewPoly.Background = (Brush)new BrushConverter().ConvertFrom("#bee6fd");
                     RedrawCanvas(Canvas1);
                 }
                 else
                 {
-                    DrawLine(Status.CurrentPolygon.Vertices.Last(), new Point(e.GetPosition(Canvas1).X, e.GetPosition(Canvas1).Y), Colors.Black, Status.CurrentPolygon._lineSize);
+                    DrawLine(Status.CurrentPolygon.Vertices.Last(), new Point(e.GetPosition(Canvas1).X, e.GetPosition(Canvas1).Y), PolyColors.colors[(_status.PolyCount - 1) % PolyColors.colors.Count()], Status.CurrentPolygon._lineSize);
                     DrawPoint(new Point(e.GetPosition(Canvas1).X, e.GetPosition(Canvas1).Y), Colors.Red, Status.CurrentPolygon._dotSize);
                     Status.CurrentPolygon.Vertices.Add(new Point(e.GetPosition(Canvas1).X, e.GetPosition(Canvas1).Y));
                 }
             }
             else if (Status.Mode == Modes.Deletion)
             {
-
+                for (var i = 0; i < Polygons.Count; i++)
+                {
+                    var solver = new InsideOutsideLib();
+                    var poly = solver.isInside(Polygons[i], point);
+                    if (poly != null)
+                        Polygons.Remove(poly);
+                    RedrawCanvas(Canvas1);
+                }
             }
             else if (Status.Mode == Modes.Idle)
             {
@@ -160,6 +206,19 @@ namespace GK_Projekt1
                     }
                 }
             }
+            else if (Status.Mode == Modes.AddingVertex)
+            {
+                for (var i = 0; i < Polygons.Count; i++)
+                {
+                    var pair = Polygons[i].IsInsideAnyLine(point);
+                    if (pair.Item1 != new Point(-1, -1))
+                    {
+                        DrawPoint(Mouse.GetPosition(Canvas1), Polygons[i]._vertexColor, Polygons[i]._dotSize);
+                        Polygons[i].Vertices.Insert(Polygons[i].Vertices.IndexOf(pair.Item1) + 1, Mouse.GetPosition(Canvas1));
+                        break;
+                    }
+                }
+            }
             _lastMousePosition = point;
             e.Handled = true;
         }
@@ -174,9 +233,9 @@ namespace GK_Projekt1
                     i.Draw(Canvas1);
 
                 if (Status.BresenhofEnabled == false)
-                    _status.Ray = DrawLine(Status.CurrentPolygon.Vertices.Last(), new Point(e.GetPosition(Canvas1).X, e.GetPosition(Canvas1).Y), PolyColors.colors[(_status.PolyCount - 1) % PolyColors.count], Status.CurrentPolygon._lineSize);
+                    _status.Ray = DrawLine(Status.CurrentPolygon.Vertices.Last(), new Point(e.GetPosition(Canvas1).X, e.GetPosition(Canvas1).Y), PolyColors.colors[(_status.PolyCount - 1) % PolyColors.colors.Count()], Status.CurrentPolygon._lineSize);
                 else
-                    _status.BresenhofDump = DrawLineBresenhof(Status.CurrentPolygon.Vertices.Last(), new Point(e.GetPosition(Canvas1).X, e.GetPosition(Canvas1).Y), PolyColors.colors[(_status.PolyCount - 1) % PolyColors.count]);
+                    _status.BresenhofDump = DrawLineBresenhof(Status.CurrentPolygon.Vertices.Last(), new Point(e.GetPosition(Canvas1).X, e.GetPosition(Canvas1).Y), PolyColors.colors[(_status.PolyCount - 1) % PolyColors.colors.Count()]);
                 Status.CurrentPolygon.Draw(Canvas1);
                 foreach (var i in Canvas1.Children)
                     if (i.GetType() == typeof(Line))
@@ -219,7 +278,14 @@ namespace GK_Projekt1
 
         private void Canvas1_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
         {
+            var temp = Status.Mode;
             CancelInserting(e);
+            if (temp == Modes.AddingInProgress)
+            {
+                _status.Mode = Modes.Adding;
+                btnNewPoly.Background = (Brush)new BrushConverter().ConvertFrom("#bee6fd");
+                btnMove.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+            }
         }
 
         private void Button_Click_2(object sender, RoutedEventArgs e)
@@ -250,15 +316,19 @@ namespace GK_Projekt1
 
         public void CancelInserting(RoutedEventArgs e)
         {
+            if (Status.Mode == Modes.AddingInProgress)
+                _status.PolyCount--;
             if (Status.Mode != Modes.Adding)
             {
                 _status.BresenhofDump = null;
                 _status.CurrentPolygon = null;
                 RedrawCanvas(Canvas1);
                 _status.Mode = Modes.Idle;
+                btnMove.Background = (Brush)new BrushConverter().ConvertFrom("#bee6fd");
+                btnNewVertex.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");;
+                btnNewPoly.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");;
+                btnDelete.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");;
             }
-            if(Status.Mode == Modes.AddingInProgress)
-                _status.PolyCount--;
             e.Handled = true;
         }
 
@@ -516,6 +586,7 @@ namespace GK_Projekt1
     {
         Adding,
         AddingInProgress,
+        AddingVertex,
         Moving,
         MovingVertex,
         MovingEdge,
@@ -525,7 +596,6 @@ namespace GK_Projekt1
 
     public static class PolyColors
     {
-        public static Color[] colors = { Colors.Black, Colors.Blue, Colors.Green, Colors.Yellow };
-        public static int count = 4;
+        public static Color[] colors = { Colors.Black, Colors.Blue, Colors.Green, Colors.Orange, Colors.Brown, Colors.Violet, Colors.Pink };
     }
 }

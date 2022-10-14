@@ -20,9 +20,11 @@
             <RowDefinition/>
         </Grid.RowDefinitions>
         <StackPanel  Background="#9e9e9e" Orientation="Horizontal" CanHorizontallyScroll="True">
-            <Button Click="Button_Click" Height="30" Content="New Polygon" />
-            <Button Click="Button_Click_1" Height="30" Content="Delete"/>
-            <Button Click="Button_Click_2" Height="30" Content="Cancel"/>
+            <Button Name="btnNewPoly" Click="Button_Click" Height="30" Background="#bee6fd" Content="New Polygon" />
+            <Button Name="btnMove" Click="btnMove_Click" Height="30" Content="Move Content" />
+            <Button Name="btnNewVertex" Click="Button_Click_3" Height="30" Content="New Vertex" />
+            <Button Name="btnDelete" Click="Button_Click_1" Height="30" Content="Delete"/>
+            <Button Name="btnCancel" Click="Button_Click_2" Height="30" Content="Cancel"/>
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="1*"/>

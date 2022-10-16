@@ -26,13 +26,13 @@ namespace GK_Projekt1
         public Canvas _canvas;
         public bool _finished = false;
         public int _clickAccuracy = 3;
-        public List<(Polygon, (int, int), (int, int))> _relations;
+        private List<Relation> _relations;
 
         public Polygon(Canvas canvas)
         {
             _vertices = new List<System.Windows.Point>();
             _canvas = canvas;
-            _relations = new List<(Polygon, (int, int), (int, int))>();
+            _relations = new List<Relation>();
         }
 
         public List<System.Windows.Point> Vertices
@@ -59,14 +59,28 @@ namespace GK_Projekt1
             }
         }
 
+        public List<Relation> Relations
+        {
+            get
+            {
+                return _relations;
+            }
+            set
+            {
+                _relations = value;
+            }
+        }
+
         public void Draw(System.Windows.Controls.Canvas canvas)
         {
             for (int i = 0; i < _vertices.Count - 1; i++)
                 DrawLine(_vertices[i], _vertices[i + 1], _color, _lineSize, canvas);
             if(_finished)
                 DrawLine(_vertices[0], _vertices[_vertices.Count - 1], _color, _lineSize, canvas);
-            foreach (var i in _vertices)
+            foreach (var i in Vertices)
                 DrawPoint(i, _vertexColor, _dotSize, canvas);
+            foreach (var i in Relations)
+                DrawRelation(i);
         }
 
         public Line DrawLine(Point p1, Point p2, Color c, int size, Canvas canvas)
@@ -104,6 +118,29 @@ namespace GK_Projekt1
             canvas.Children.Add(temp);
         }
 
+        public void DrawRelation(Relation rel)
+        {
+            var ret = new TextBlock();
+            ret.FontSize = 15;
+            ret.Foreground = Brushes.Black;
+            if (rel.Type == RelationTypes.Perpendicular)
+                ret.Text = ((char)0x27C2).ToString() + " " + rel.ID.ToString();
+            else
+                ret.Text = ((char)0x2225).ToString() + " " + rel.ID.ToString();
+
+            if (Math.Abs(rel.FirstEdge.Item1.X - rel.FirstEdge.Item2.X) >= Math.Abs(rel.FirstEdge.Item1.Y - rel.FirstEdge.Item2.Y))
+            {
+                Canvas.SetLeft(ret, Math.Min(rel.FirstEdge.Item1.X, rel.FirstEdge.Item2.X) + Math.Abs(rel.FirstEdge.Item1.X - rel.FirstEdge.Item2.X) / 2);
+                Canvas.SetTop(ret, Math.Min(rel.FirstEdge.Item1.Y, rel.FirstEdge.Item2.Y) + Math.Abs(rel.FirstEdge.Item1.Y - rel.FirstEdge.Item2.Y) / 2 - 20);
+            }
+            else
+            {
+                Canvas.SetLeft(ret, Math.Min(rel.FirstEdge.Item1.X, rel.FirstEdge.Item2.X) + Math.Abs(rel.FirstEdge.Item1.X - rel.FirstEdge.Item2.X) / 2 + 10);
+                Canvas.SetTop(ret, Math.Min(rel.FirstEdge.Item1.Y, rel.FirstEdge.Item2.Y) + Math.Abs(rel.FirstEdge.Item1.Y - rel.FirstEdge.Item2.Y) / 2);
+            }
+            _canvas.Children.Add(ret);
+        }
+
         public bool IsInsideFirstVertex(Point p)
         {
             if (IsInsideVertex(p, Vertices[0]) && Vertices.Count > 2)
@@ -138,12 +175,36 @@ namespace GK_Projekt1
         {
             var a = (lineBeginning.Y - lineEnding.Y) / (lineBeginning.X - lineEnding.X);
             var b = lineBeginning.Y - a * lineBeginning.X; 
-            if (Math.Abs(a * cursor.X + b - cursor.Y) < _lineSize / 2 + _clickAccuracy)
+            if (Math.Abs(a * cursor.X + b - cursor.Y) <= _lineSize / 2 + _clickAccuracy && cursor.X >= Math.Min(lineBeginning.X, lineEnding.X) && cursor.X <= Math.Max(lineBeginning.X, lineEnding.X) && cursor.Y >= Math.Min(lineBeginning.Y, lineEnding.Y) && cursor.Y <= Math.Max(lineBeginning.Y, lineEnding.Y))
                 return true;
             return false;
         }
+
+        public void AddRelation(Point p1, Point p2, Polygon poly, Point p3, Point p4, RelationTypes type, int id)
+        {
+            var ret = new Relation();
+            ret.FirstEdge = (p1, p2);
+            ret.RelatedPolygon = poly;
+            ret.SecondEdge = (p3, p4);
+            ret.Type = type;
+            ret.ID = id;
+            Relations.Add(ret);
+        }
+    }
+    public class Relation
+    {
+        public (Point, Point) FirstEdge;
+        public Polygon RelatedPolygon;
+        public (Point, Point) SecondEdge;
+        public RelationTypes Type;
+        public int ID;
     }
 
+    public enum RelationTypes
+    {
+        Perpendicular,
+        Parallel
+    }
     // https://www.geeksforgeeks.org/how-to-check-if-a-given-point-lies-inside-a-polygon/#:~:text=Draw%20a%20horizontal%20line%20to,on%20an%20edge%20of%20polygon.
     class InsideOutsideLib
     {
@@ -167,7 +228,7 @@ namespace GK_Projekt1
             return (val > 0) ? 1 : 2;
         }
 
-         bool doIntersect(Point p1, Point q1, Point p2, Point q2)
+         static bool doIntersect(Point p1, Point q1, Point p2, Point q2)
         {
             double o1 = orientation(p1, q1, p2);
             double o2 = orientation(p1, q1, q2);

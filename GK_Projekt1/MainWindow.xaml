@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:GK_Projekt1"
         mc:Ignorable="d"
-        Title="Polygon Editor" Height="450" Width="800">
+        Title="Polygon Editor" Height="600" Width="1000">
     <Window.Resources>
         <Style TargetType="Button">
             <Setter Property="HorizontalAlignment" Value="Left"/>
@@ -23,6 +23,8 @@
             <Button Name="btnNewPoly" Click="Button_Click" Height="30" Background="#bee6fd" Content="New Polygon" />
             <Button Name="btnMove" Click="btnMove_Click" Height="30" Content="Move Content" />
             <Button Name="btnNewVertex" Click="Button_Click_3" Height="30" Content="New Vertex" />
+            <Button Name="btnPerpendicular" Click="btnPerpendicular_Click" Height="30" Content="Make Perpendicular"/>
+            <Button Name="btnParallel" Click="btnParallel_Click" Height="30" Content="Make Parallel"/>
             <Button Name="btnDelete" Click="Button_Click_1" Height="30" Content="Delete"/>
             <Button Name="btnCancel" Click="Button_Click_2" Height="30" Content="Cancel"/>
             <Grid>

@@ -1,18 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
 using System.Windows.Shapes;
-using GK_Projekt1;
 
 namespace GK_Projekt1
 {
@@ -27,6 +19,7 @@ namespace GK_Projekt1
         public bool _finished = false;
         public int _clickAccuracy = 3;
         private List<Relation> _relations;
+        public bool IsConstLength { get; set; }
 
         public Polygon(Canvas canvas)
         {
@@ -75,7 +68,7 @@ namespace GK_Projekt1
         {
             for (int i = 0; i < _vertices.Count - 1; i++)
                 DrawLine(_vertices[i], _vertices[i + 1], _color, _lineSize, canvas);
-            if(_finished)
+            if (_finished)
                 DrawLine(_vertices[0], _vertices[_vertices.Count - 1], _color, _lineSize, canvas);
             foreach (var i in Vertices)
                 DrawPoint(i, _vertexColor, _dotSize, canvas);
@@ -88,10 +81,16 @@ namespace GK_Projekt1
             var temp = new Line();
             var b = new SolidColorBrush();
             b.Color = c;
-            temp.X1 = p1.X;
-            temp.X2 = p2.X;
-            temp.Y1 = p1.Y;
-            temp.Y2 = p2.Y;
+            try
+            {
+                temp.X1 = p1.X;
+                temp.X2 = p2.X;
+                temp.Y1 = p1.Y;
+                temp.Y2 = p2.Y;
+            }catch(ArgumentException e)
+            {
+                
+            }
             temp.StrokeThickness = size;
             temp.Stroke = b;
             temp.SnapsToDevicePixels = true;
@@ -125,8 +124,10 @@ namespace GK_Projekt1
             ret.Foreground = Brushes.Black;
             if (rel.Type == RelationTypes.Perpendicular)
                 ret.Text = ((char)0x27C2).ToString() + " " + rel.ID.ToString();
-            else
+            else if (rel.Type == RelationTypes.Parallel)
                 ret.Text = ((char)0x2225).ToString() + " " + rel.ID.ToString();
+            else if (rel.Type == RelationTypes.Const)
+                ret.Text = "const";
 
             if (Math.Abs(rel.FirstEdge.Item1.X - rel.FirstEdge.Item2.X) >= Math.Abs(rel.FirstEdge.Item1.Y - rel.FirstEdge.Item2.Y))
             {
@@ -174,8 +175,14 @@ namespace GK_Projekt1
         public bool IsInsideLine(Point cursor, Point lineBeginning, Point lineEnding)
         {
             var a = (lineBeginning.Y - lineEnding.Y) / (lineBeginning.X - lineEnding.X);
-            var b = lineBeginning.Y - a * lineBeginning.X; 
-            if (Math.Abs(a * cursor.X + b - cursor.Y) <= _lineSize / 2 + _clickAccuracy && cursor.X >= Math.Min(lineBeginning.X, lineEnding.X) && cursor.X <= Math.Max(lineBeginning.X, lineEnding.X) && cursor.Y >= Math.Min(lineBeginning.Y, lineEnding.Y) && cursor.Y <= Math.Max(lineBeginning.Y, lineEnding.Y))
+            var b = lineBeginning.Y - a * lineBeginning.X;
+            if (Math.Abs(a) > 20 && Math.Abs(cursor.X - (lineBeginning.X + lineEnding.X) / 2) < _lineSize + _clickAccuracy
+                && cursor.Y < Math.Max(lineBeginning.Y, lineEnding.Y)
+                && cursor.Y > Math.Min(lineBeginning.Y, lineEnding.Y))
+                return true;
+            if (Math.Abs(a * cursor.X + b - cursor.Y) <= _lineSize / 2 + _clickAccuracy && 
+                cursor.X >= Math.Min(lineBeginning.X, lineEnding.X) && cursor.X <= Math.Max(lineBeginning.X, lineEnding.X) && 
+                cursor.Y >= Math.Min(lineBeginning.Y, lineEnding.Y) && cursor.Y <= Math.Max(lineBeginning.Y, lineEnding.Y))
                 return true;
             return false;
         }
@@ -203,7 +210,8 @@ namespace GK_Projekt1
     public enum RelationTypes
     {
         Perpendicular,
-        Parallel
+        Parallel,
+        Const
     }
     // https://www.geeksforgeeks.org/how-to-check-if-a-given-point-lies-inside-a-polygon/#:~:text=Draw%20a%20horizontal%20line%20to,on%20an%20edge%20of%20polygon.
     class InsideOutsideLib
@@ -228,7 +236,7 @@ namespace GK_Projekt1
             return (val > 0) ? 1 : 2;
         }
 
-         static bool doIntersect(Point p1, Point q1, Point p2, Point q2)
+        static bool doIntersect(Point p1, Point q1, Point p2, Point q2)
         {
             double o1 = orientation(p1, q1, p2);
             double o2 = orientation(p1, q1, q2);

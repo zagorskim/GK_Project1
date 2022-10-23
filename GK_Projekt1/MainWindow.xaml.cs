@@ -88,6 +88,7 @@ namespace GK_Projekt1
                 btnMove.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
                 btnPerpendicular.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
                 btnParallel.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+                btnConstLength.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
             }
         }
 
@@ -104,6 +105,7 @@ namespace GK_Projekt1
             btnMove.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
             btnPerpendicular.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
             btnParallel.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+            btnConstLength.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
         }
 
         private void Button_Click_3(object sender, RoutedEventArgs e)
@@ -117,6 +119,7 @@ namespace GK_Projekt1
             btnMove.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
             btnPerpendicular.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
             btnParallel.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+            btnConstLength.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
         }
 
 
@@ -131,6 +134,7 @@ namespace GK_Projekt1
             btnNewVertex.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
             btnPerpendicular.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
             btnParallel.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+            btnConstLength.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
         }
 
 
@@ -145,6 +149,7 @@ namespace GK_Projekt1
             btnNewVertex.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
             btnMove.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
             btnParallel.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+            btnConstLength.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
         }
 
         private void btnParallel_Click(object sender, RoutedEventArgs e)
@@ -153,6 +158,21 @@ namespace GK_Projekt1
                 CancelInserting(e);
             _status.Mode = Modes.AddingParallelRelation;
             btnParallel.Background = (Brush)new BrushConverter().ConvertFrom("#bee6fd");
+            btnDelete.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+            btnNewPoly.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+            btnNewVertex.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+            btnMove.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+            btnPerpendicular.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+            btnConstLength.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+        }
+
+        private void btnConstLength_Click(object sender, RoutedEventArgs e)
+        {
+            if (Status.Mode == Modes.AddingInProgress)
+                CancelInserting(e);
+            _status.Mode = Modes.SettingConstLength;
+            btnConstLength.Background = (Brush)new BrushConverter().ConvertFrom("#bee6fd");
+            btnParallel.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
             btnDelete.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
             btnNewPoly.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
             btnNewVertex.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
@@ -347,10 +367,33 @@ namespace GK_Projekt1
                             btnNewVertex.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
                             btnPerpendicular.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
                             btnParallel.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+                            btnConstLength.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
                             RedrawCanvas(Canvas1);
                         }
                     }
                 }
+            }
+            else if(Status.Mode == Modes.SettingConstLength)
+            {
+                for (var i = 0; i < Polygons.Count; i++)
+                {
+                    var pair = Polygons[i].IsInsideAnyLine(point);
+                    if (pair.Item1 != new Point(-1, -1))
+                    {
+                        Polygons[i].AddRelation(pair.Item1, pair.Item2, null, new Point(-1, -1), new Point(-1, -1), RelationTypes.Const, Status.RelationCount);
+                        _status.RelationCount++;
+                        break;
+                    }
+                }
+                btnMove.Background = (Brush)new BrushConverter().ConvertFrom("#bee6fd");
+                btnDelete.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+                btnNewPoly.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+                btnNewVertex.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+                btnPerpendicular.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+                btnParallel.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+                btnConstLength.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+                _status.Mode = Modes.Idle;
+                RedrawCanvas(Canvas1);
             }
             _lastMousePosition = point;
             e.Handled = true;
@@ -392,24 +435,56 @@ namespace GK_Projekt1
             }
             else if(Status.Mode == Modes.MovingVertex)
             {
-                var p0 = _status.CurrentPolygon.Vertices[Status.VertexInMove];
-                for (int i = 0; i < Status.CurrentPolygon.Relations.Count; i++)
+                var isConst = false;
+                Relation rel = new Relation();
+                int count = 0;
+                foreach (var i in Status.CurrentPolygon.Relations)
+                    if ((i.FirstEdge.Item1 == _status.CurrentPolygon.Vertices[Status.VertexInMove] || i.FirstEdge.Item2 == _status.CurrentPolygon.Vertices[Status.VertexInMove]) && i.Type == RelationTypes.Const)
+                    {
+                        isConst = true;
+                        rel = i;
+                        count++;
+                    }
+                if (isConst == true)
                 {
-                    if (Status.CurrentPolygon.Vertices[Status.VertexInMove] == Status.CurrentPolygon.Relations[i].FirstEdge.Item1)
-                        _status.CurrentPolygon.Relations[i].FirstEdge.Item1 = point;
-                    if (Status.CurrentPolygon.Vertices[Status.VertexInMove] == Status.CurrentPolygon.Relations[i].FirstEdge.Item2)
-                        _status.CurrentPolygon.Relations[i].FirstEdge.Item2 = point;
+                    if (count < 2)
+                    {
+                        var line = rel.FirstEdge.Item1 == Status.CurrentPolygon.Vertices[Status.VertexInMove] ?
+                            (new Point(rel.FirstEdge.Item2.X - (rel.FirstEdge.Item1.X - rel.FirstEdge.Item2.X), rel.FirstEdge.Item2.Y - (rel.FirstEdge.Item1.Y - rel.FirstEdge.Item2.Y)), rel.FirstEdge.Item1) :
+                            (new Point(rel.FirstEdge.Item1.X - (rel.FirstEdge.Item2.X - rel.FirstEdge.Item1.X), rel.FirstEdge.Item1.Y - (rel.FirstEdge.Item2.Y - rel.FirstEdge.Item1.Y)), rel.FirstEdge.Item2);
+                        var ret = RotateEdge(line, (point.Y - (rel.FirstEdge.Item1.Y + rel.FirstEdge.Item2.Y) / 2) / (point.X - (rel.FirstEdge.Item1.X + rel.FirstEdge.Item2.X) / 2));
+                        if (rel.FirstEdge.Item1 == Status.CurrentPolygon.Vertices[Status.VertexInMove])
+                            rel.FirstEdge.Item1 = ret.Item2;
+                        else
+                            rel.FirstEdge.Item2 = ret.Item2;
+                        _status.CurrentPolygon.Vertices[Status.VertexInMove] = ret.Item2;
+                    }
+                    else
+                    {
+                        _status.Mode = Modes.Moving;
+                    }
                 }
-                _status.CurrentPolygon.Vertices[Status.VertexInMove] = point;
-                var a = (Status.CurrentPolygon.Vertices[Status.VertexInMove].Y - Status.CurrentPolygon.Vertices[Mod(Status.VertexInMove - 1, Status.CurrentPolygon.Vertices.Count)].Y) / (Status.CurrentPolygon.Vertices[Status.VertexInMove].X - Status.CurrentPolygon.Vertices[Mod((Status.VertexInMove - 1), Status.CurrentPolygon.Vertices.Count)].X);
-                MoveRelations(a, _status.CurrentPolygon, p0, Status.CurrentPolygon.Vertices[Mod(Status.VertexInMove - 1, Status.CurrentPolygon.Vertices.Count)]);
-                a = (Status.CurrentPolygon.Vertices[Status.VertexInMove].Y - Status.CurrentPolygon.Vertices[Mod(Status.VertexInMove + 1, Status.CurrentPolygon.Vertices.Count)].Y) / (Status.CurrentPolygon.Vertices[Status.VertexInMove].X - Status.CurrentPolygon.Vertices[Mod((Status.VertexInMove + 1), Status.CurrentPolygon.Vertices.Count)].X);
-                MoveRelations(a, _status.CurrentPolygon, p0, Status.CurrentPolygon.Vertices[Mod(Status.VertexInMove + 1, Status.CurrentPolygon.Vertices.Count)]);
-
+                else
+                {
+                    var p0 = _status.CurrentPolygon.Vertices[Status.VertexInMove];
+                    for (int i = 0; i < Status.CurrentPolygon.Relations.Count; i++)
+                    {
+                        if (Status.CurrentPolygon.Vertices[Status.VertexInMove] == Status.CurrentPolygon.Relations[i].FirstEdge.Item1)
+                            _status.CurrentPolygon.Relations[i].FirstEdge.Item1 = point;
+                        if (Status.CurrentPolygon.Vertices[Status.VertexInMove] == Status.CurrentPolygon.Relations[i].FirstEdge.Item2)
+                            _status.CurrentPolygon.Relations[i].FirstEdge.Item2 = point;
+                    }
+                    _status.CurrentPolygon.Vertices[Status.VertexInMove] = point;
+                    var a = (Status.CurrentPolygon.Vertices[Status.VertexInMove].Y - Status.CurrentPolygon.Vertices[Mod(Status.VertexInMove - 1, Status.CurrentPolygon.Vertices.Count)].Y) / (Status.CurrentPolygon.Vertices[Status.VertexInMove].X - Status.CurrentPolygon.Vertices[Mod((Status.VertexInMove - 1), Status.CurrentPolygon.Vertices.Count)].X);
+                    MoveRelations(a, _status.CurrentPolygon, p0, Status.CurrentPolygon.Vertices[Mod(Status.VertexInMove - 1, Status.CurrentPolygon.Vertices.Count)]);
+                    a = (Status.CurrentPolygon.Vertices[Status.VertexInMove].Y - Status.CurrentPolygon.Vertices[Mod(Status.VertexInMove + 1, Status.CurrentPolygon.Vertices.Count)].Y) / (Status.CurrentPolygon.Vertices[Status.VertexInMove].X - Status.CurrentPolygon.Vertices[Mod((Status.VertexInMove + 1), Status.CurrentPolygon.Vertices.Count)].X);
+                    MoveRelations(a, _status.CurrentPolygon, p0, Status.CurrentPolygon.Vertices[Mod(Status.VertexInMove + 1, Status.CurrentPolygon.Vertices.Count)]);
+                }
                 RedrawCanvas(Canvas1);
             }
             else if(Status.Mode == Modes.MovingEdge)
             {
+                // Keeping relations while moving edges to be implemented...
                 for (int i = 0; i < Status.CurrentPolygon.Relations.Count; i++)
                 {
                     if (Status.CurrentPolygon.Vertices[Status.EdgeInMove.Item1] == Status.CurrentPolygon.Relations[i].FirstEdge.Item1)
@@ -421,7 +496,6 @@ namespace GK_Projekt1
                     if (Status.CurrentPolygon.Vertices[Status.EdgeInMove.Item2] == Status.CurrentPolygon.Relations[i].FirstEdge.Item2)
                         _status.CurrentPolygon.Relations[i].FirstEdge.Item2 = new Point(_status.CurrentPolygon.Vertices[Status.EdgeInMove.Item2].X - (_lastMousePosition.X - point.X), _status.CurrentPolygon.Vertices[Status.EdgeInMove.Item2].Y - (_lastMousePosition.Y - point.Y));
                 }
-                // Moving one polygon's edge sometimes grab random polygon's edge :/
                 var ret = new Point(_status.CurrentPolygon.Vertices[Status.EdgeInMove.Item1].X - (_lastMousePosition.X - point.X), _status.CurrentPolygon.Vertices[Status.EdgeInMove.Item1].Y - (_lastMousePosition.Y - point.Y));
                 _status.CurrentPolygon.Vertices[Status.EdgeInMove.Item1] = ret;
                 ret = new Point(_status.CurrentPolygon.Vertices[Status.EdgeInMove.Item2].X - (_lastMousePosition.X - point.X), _status.CurrentPolygon.Vertices[Status.EdgeInMove.Item2].Y - (_lastMousePosition.Y - point.Y));
@@ -673,26 +747,34 @@ namespace GK_Projekt1
 
         public void MoveRelations(double a, Polygon poly, Point p1, Point p2)
         {
-            foreach (var rel in poly.Relations)
-            {
-                if (rel.FirstEdge == (p1, p2) || rel.FirstEdge == (p2, p1))
+                try
                 {
-                    var twinRelation = rel.RelatedPolygon.Relations.Find((x) => x.ID == rel.ID);
-                    // twinPoints not found sometimes :/
-                    var twinPoints = (rel.RelatedPolygon.Vertices.FindIndex((x) => new Point(x.X, x.Y) == twinRelation.FirstEdge.Item1), rel.RelatedPolygon.Vertices.FindIndex((x) => new Point(x.X, x.Y) == twinRelation.FirstEdge.Item2));
-                    if (rel.Type == RelationTypes.Parallel)
+                    foreach (var rel in poly.Relations)
                     {
-                        (rel.RelatedPolygon.Vertices[twinPoints.Item1], rel.RelatedPolygon.Vertices[twinPoints.Item2]) = RotateEdge(twinRelation.FirstEdge, a);
-                        twinRelation.FirstEdge = (rel.RelatedPolygon.Vertices[twinPoints.Item1], rel.RelatedPolygon.Vertices[twinPoints.Item2]);
+                        if (rel.FirstEdge == (p1, p2) || rel.FirstEdge == (p2, p1))
+                        {
+                            var twinRelation = rel.RelatedPolygon.Relations.Find((x) => x.ID == rel.ID);
+                            // twinPoints not found sometimes :/
+                            var twinPoints = (rel.RelatedPolygon.Vertices.FindIndex((x) => new Point(x.X, x.Y) == twinRelation.FirstEdge.Item1), rel.RelatedPolygon.Vertices.FindIndex((x) => new Point(x.X, x.Y) == twinRelation.FirstEdge.Item2));
+                            if (rel.Type == RelationTypes.Parallel)
+                            {
+                                (rel.RelatedPolygon.Vertices[twinPoints.Item1], rel.RelatedPolygon.Vertices[twinPoints.Item2]) = RotateEdge(twinRelation.FirstEdge, a);
+                                twinRelation.FirstEdge = (rel.RelatedPolygon.Vertices[twinPoints.Item1], rel.RelatedPolygon.Vertices[twinPoints.Item2]);
+                            }
+                            else if (rel.Type == RelationTypes.Perpendicular)
+                            {
+                                (rel.RelatedPolygon.Vertices[twinPoints.Item1], rel.RelatedPolygon.Vertices[twinPoints.Item2]) = RotateEdge(twinRelation.FirstEdge, -1 / a);
+                                twinRelation.FirstEdge = (rel.RelatedPolygon.Vertices[twinPoints.Item1], rel.RelatedPolygon.Vertices[twinPoints.Item2]);
+                            }
+                            // Recursive Moving further edge dependancies to be added
+                            MoveRelations(a, rel.RelatedPolygon, rel.SecondEdge.Item1, rel.SecondEdge.Item2);
+                        }
                     }
-                    else if(rel.Type == RelationTypes.Perpendicular)
-                    {
-                        (rel.RelatedPolygon.Vertices[twinPoints.Item1], rel.RelatedPolygon.Vertices[twinPoints.Item2]) = RotateEdge(twinRelation.FirstEdge, -1 / a);
-                        twinRelation.FirstEdge = (rel.RelatedPolygon.Vertices[twinPoints.Item1], rel.RelatedPolygon.Vertices[twinPoints.Item2]);
-                    }
-                    // Recursive Moving further edge dependancies to be added
                 }
-            }
+                catch (InvalidOperationException e)
+                {
+
+                }
         }
 
         private Ellipse SetPixel(Point p, Color c)
@@ -830,6 +912,7 @@ namespace GK_Projekt1
         Deletion,
         AddingPerpendicularRelation,
         AddingParallelRelation,
+        SettingConstLength,
         Idle
     }
 

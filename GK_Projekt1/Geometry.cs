@@ -205,6 +205,7 @@ namespace GK_Projekt1
         public (Point, Point) SecondEdge;
         public RelationTypes Type;
         public int ID;
+        public bool Visited = false;
     }
 
     public enum RelationTypes

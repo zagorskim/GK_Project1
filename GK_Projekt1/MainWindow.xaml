@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:GK_Projekt1"
         mc:Ignorable="d"
-        Title="Polygon Editor" Height="600" Width="1000">
+        Title="Polygon Editor" Height="700" Width="1200">
     <Window.Resources>
         <Style TargetType="Button">
             <Setter Property="HorizontalAlignment" Value="Left"/>

@@ -75,6 +75,7 @@ namespace GK_Projekt1
             _polygons = new List<Polygon>();
             Canvas1.MouseLeftButtonDown += new MouseButtonEventHandler(Canvas1_MouseLeftButtonDown);
             Canvas1.Background = Brushes.Transparent;
+            SetFirstScene();
         }
 
         private void Button_Click(object sender, RoutedEventArgs e)
@@ -212,41 +213,63 @@ namespace GK_Projekt1
             }
             else if (Status.Mode == Modes.Deletion)
             {
-                for (var i = 0; i < Polygons.Count; i++)
+                if (e.Source.GetType() == typeof(TextBlock))
                 {
-                    var p = Polygons[i].IsInsideAnyVertex(point);
-                    if (p != new Point(-1, -1) && Polygons[i].Vertices.Count > 3)
-                    {
-                        Polygons[i].Vertices.RemoveAt(Polygons[i].Vertices.IndexOf(p));
-                        var temp = new List<Relation>(Polygons[i].Relations);
-                        foreach(var r in Polygons[i].Relations)
+                    for (int i = 0; i < Polygons.Count; i++)
+                        for (int j = 0; j < Polygons[i].Relations.Count; j++)
                         {
-                            if (r.FirstEdge.Item1 == p)
+                            var temp = Polygons[i].Relations[j].FirstEdge;
+                            if (Math.Sqrt(Math.Pow(point.X - (temp.Item1.X + temp.Item2.X) / 2, 2) + Math.Pow(point.Y - (temp.Item1.Y + temp.Item2.Y) / 2, 2)) < 40)
                             {
-                                foreach (var s in Polygons[i].Relations)
-                                    if (s.SecondEdge.Item1 == r.FirstEdge.Item1 || s.SecondEdge.Item2 == r.FirstEdge.Item1)
-                                        temp.Remove(s);
-                                temp.Remove(r);
-                                continue;
-                            }
-                            if (r.FirstEdge.Item2 == p)
-                            {
-                                foreach (var s in Polygons[i].Relations)
-                                    if (s.SecondEdge.Item1 == r.FirstEdge.Item2 || s.SecondEdge.Item2 == r.FirstEdge.Item2)
-                                        temp.Remove(s);
-                                temp.Remove(r);
+                                Polygons[i].Relations.Remove(Polygons[i].Relations[j]);
+                                for (int k = 0; k < Polygons.Count; k++)
+                                    for (int l = 0; l < Polygons[k].Relations.Count; l++)
+                                    {
+                                        if(temp == Polygons[k].Relations[l].SecondEdge)
+                                            Polygons[k].Relations.Remove(Polygons[k].Relations[l]);
+                                    }
+                                break;
                             }
                         }
-                        Polygons[i].Relations = temp;
-                        break;
-                    }
-                    else
+                }
+                else
+                {
+                    for (var i = 0; i < Polygons.Count; i++)
                     {
-                        var solver = new InsideOutsideLib();
-                        var poly = solver.isInside(Polygons[i], point);
-                        if (poly != null)
+                        var p = Polygons[i].IsInsideAnyVertex(point);
+                        if (p != new Point(-1, -1) && Polygons[i].Vertices.Count > 3)
                         {
-                            Polygons.Remove(poly);
+                            Polygons[i].Vertices.RemoveAt(Polygons[i].Vertices.IndexOf(p));
+                            var temp = new List<Relation>(Polygons[i].Relations);
+                            foreach (var r in Polygons[i].Relations)
+                            {
+                                if (r.FirstEdge.Item1 == p)
+                                {
+                                    foreach (var s in Polygons[i].Relations)
+                                        if (s.SecondEdge.Item1 == r.FirstEdge.Item1 || s.SecondEdge.Item2 == r.FirstEdge.Item1)
+                                            temp.Remove(s);
+                                    temp.Remove(r);
+                                    continue;
+                                }
+                                if (r.FirstEdge.Item2 == p)
+                                {
+                                    foreach (var s in Polygons[i].Relations)
+                                        if (s.SecondEdge.Item1 == r.FirstEdge.Item2 || s.SecondEdge.Item2 == r.FirstEdge.Item2)
+                                            temp.Remove(s);
+                                    temp.Remove(r);
+                                }
+                            }
+                            Polygons[i].Relations = temp;
+                            break;
+                        }
+                        else
+                        {
+                            var solver = new InsideOutsideLib();
+                            var poly = solver.isInside(Polygons[i], point);
+                            if (poly != null)
+                            {
+                                Polygons.Remove(poly);
+                            }
                         }
                     }
                 }
@@ -467,20 +490,36 @@ namespace GK_Projekt1
                 else
                 {
                     var p0 = _status.CurrentPolygon.Vertices[Status.VertexInMove];
+                    _status.CurrentPolygon.Vertices[Status.VertexInMove] = point;
                     for (int i = 0; i < Status.CurrentPolygon.Relations.Count; i++)
                     {
-                        if (Status.CurrentPolygon.Vertices[Status.VertexInMove] == Status.CurrentPolygon.Relations[i].FirstEdge.Item1)
+                        if (p0 == Status.CurrentPolygon.Relations[i].FirstEdge.Item1)
                             _status.CurrentPolygon.Relations[i].FirstEdge.Item1 = point;
-                        if (Status.CurrentPolygon.Vertices[Status.VertexInMove] == Status.CurrentPolygon.Relations[i].FirstEdge.Item2)
+                        if (p0 == Status.CurrentPolygon.Relations[i].FirstEdge.Item2)
                             _status.CurrentPolygon.Relations[i].FirstEdge.Item2 = point;
                     }
-                    _status.CurrentPolygon.Vertices[Status.VertexInMove] = point;
                     var a = (Status.CurrentPolygon.Vertices[Status.VertexInMove].Y - Status.CurrentPolygon.Vertices[Mod(Status.VertexInMove - 1, Status.CurrentPolygon.Vertices.Count)].Y) / (Status.CurrentPolygon.Vertices[Status.VertexInMove].X - Status.CurrentPolygon.Vertices[Mod((Status.VertexInMove - 1), Status.CurrentPolygon.Vertices.Count)].X);
-                    MoveRelations(a, _status.CurrentPolygon, p0, Status.CurrentPolygon.Vertices[Mod(Status.VertexInMove - 1, Status.CurrentPolygon.Vertices.Count)]);
-                    a = (Status.CurrentPolygon.Vertices[Status.VertexInMove].Y - Status.CurrentPolygon.Vertices[Mod(Status.VertexInMove + 1, Status.CurrentPolygon.Vertices.Count)].Y) / (Status.CurrentPolygon.Vertices[Status.VertexInMove].X - Status.CurrentPolygon.Vertices[Mod((Status.VertexInMove + 1), Status.CurrentPolygon.Vertices.Count)].X);
-                    MoveRelations(a, _status.CurrentPolygon, p0, Status.CurrentPolygon.Vertices[Mod(Status.VertexInMove + 1, Status.CurrentPolygon.Vertices.Count)]);
+                    for (var i = 0; i < Status.CurrentPolygon.Relations.Count; i++)
+                    {
+                        if (Status.CurrentPolygon.Relations[i].FirstEdge.Item1 == p0)
+                        {
+                            a = (Status.CurrentPolygon.Vertices[Status.VertexInMove].Y - Status.CurrentPolygon.Vertices[Mod(Status.VertexInMove + 1, Status.CurrentPolygon.Vertices.Count)].Y) / (Status.CurrentPolygon.Vertices[Status.VertexInMove].X - Status.CurrentPolygon.Vertices[Mod((Status.VertexInMove + 1), Status.CurrentPolygon.Vertices.Count)].X);
+                            Status.CurrentPolygon.Relations[i].Visited = true;
+                            MoveRelations(a, Status.CurrentPolygon.Relations[i].RelatedPolygon, Status.CurrentPolygon.Relations[i].ID, Status.CurrentPolygon.Relations[i]);
+                        }
+                        else if(Status.CurrentPolygon.Relations[i].FirstEdge.Item2 == p0)
+                        {
+                            Status.CurrentPolygon.Relations[i].Visited = true;
+                            MoveRelations(a, Status.CurrentPolygon.Relations[i].RelatedPolygon, Status.CurrentPolygon.Relations[i].ID, Status.CurrentPolygon.Relations[i]);
+                        }
+                    }
+                //    a = (Status.CurrentPolygon.Vertices[Status.VertexInMove].Y - Status.CurrentPolygon.Vertices[Mod(Status.VertexInMove + 1, Status.CurrentPolygon.Vertices.Count)].Y) / (Status.CurrentPolygon.Vertices[Status.VertexInMove].X - Status.CurrentPolygon.Vertices[Mod((Status.VertexInMove + 1), Status.CurrentPolygon.Vertices.Count)].X);
+                //    MoveRelations(a, _status.CurrentPolygon, p0, Status.CurrentPolygon.Vertices[Mod(Status.VertexInMove + 1, Status.CurrentPolygon.Vertices.Count)], null);
                 }
                 RedrawCanvas(Canvas1);
+                for (var i = 0; i < Polygons.Count; i++)
+                    for (var j = 0; j < Polygons[i].Relations.Count; j++)
+                        Polygons[i].Relations[j].Visited = false;
             }
             else if(Status.Mode == Modes.MovingEdge)
             {
@@ -715,6 +754,8 @@ namespace GK_Projekt1
 
         private (Point, Point) RotateEdge((Point, Point) edge, double a)
         {
+            if (a == double.NaN)
+                a = 50;
             var middle = new Point((edge.Item1.X + edge.Item2.X) / 2, (edge.Item1.Y + edge.Item2.Y) / 2);
             var length = Math.Sqrt(Math.Pow(edge.Item1.X - edge.Item2.X, 2) + Math.Pow(edge.Item1.Y - edge.Item2.Y, 2));
             var b = middle.Y - a * middle.X;
@@ -745,35 +786,47 @@ namespace GK_Projekt1
             return edge;
         }
 
-        public void MoveRelations(double a, Polygon poly, Point p1, Point p2)
+        public void MoveRelations(double a, Polygon poly, int ID, Relation prevRel)
         {
-                try
+            (Point, Point) temp = default;
+            (Point, Point) res = default;
+            for (var i = 0; i < poly.Relations.Count; i++)
+            {
+                if (poly.Relations[i].ID == ID && poly.Relations[i].Visited != true)
                 {
-                    foreach (var rel in poly.Relations)
+                    try
                     {
-                        if (rel.FirstEdge == (p1, p2) || rel.FirstEdge == (p2, p1))
+                        temp = poly.Relations[i].FirstEdge;
+                        var twinRelation = poly.Relations[i];
+                        var twinPoints = (poly.Vertices.FindIndex((x) => new Point(x.X, x.Y) == twinRelation.FirstEdge.Item1), poly.Vertices.FindIndex((x) => new Point(x.X, x.Y) == twinRelation.FirstEdge.Item2));
+                        if (poly.Relations[i].Type == RelationTypes.Parallel)
                         {
-                            var twinRelation = rel.RelatedPolygon.Relations.Find((x) => x.ID == rel.ID);
-                            // twinPoints not found sometimes :/
-                            var twinPoints = (rel.RelatedPolygon.Vertices.FindIndex((x) => new Point(x.X, x.Y) == twinRelation.FirstEdge.Item1), rel.RelatedPolygon.Vertices.FindIndex((x) => new Point(x.X, x.Y) == twinRelation.FirstEdge.Item2));
-                            if (rel.Type == RelationTypes.Parallel)
-                            {
-                                (rel.RelatedPolygon.Vertices[twinPoints.Item1], rel.RelatedPolygon.Vertices[twinPoints.Item2]) = RotateEdge(twinRelation.FirstEdge, a);
-                                twinRelation.FirstEdge = (rel.RelatedPolygon.Vertices[twinPoints.Item1], rel.RelatedPolygon.Vertices[twinPoints.Item2]);
-                            }
-                            else if (rel.Type == RelationTypes.Perpendicular)
-                            {
-                                (rel.RelatedPolygon.Vertices[twinPoints.Item1], rel.RelatedPolygon.Vertices[twinPoints.Item2]) = RotateEdge(twinRelation.FirstEdge, -1 / a);
-                                twinRelation.FirstEdge = (rel.RelatedPolygon.Vertices[twinPoints.Item1], rel.RelatedPolygon.Vertices[twinPoints.Item2]);
-                            }
-                            // Recursive Moving further edge dependancies to be added
-                            MoveRelations(a, rel.RelatedPolygon, rel.SecondEdge.Item1, rel.SecondEdge.Item2);
+                            (poly.Vertices[twinPoints.Item1], poly.Vertices[twinPoints.Item2]) = RotateEdge(twinRelation.FirstEdge, a);
+                            twinRelation.FirstEdge = (poly.Vertices[twinPoints.Item1], poly.Vertices[twinPoints.Item2]);
                         }
+                        else if (poly.Relations[i].Type == RelationTypes.Perpendicular)
+                        {
+                            (poly.Vertices[twinPoints.Item1], poly.Vertices[twinPoints.Item2]) = RotateEdge(twinRelation.FirstEdge, -1 / a);
+                            twinRelation.FirstEdge = (poly.Vertices[twinPoints.Item1], poly.Vertices[twinPoints.Item2]);
+                        }
+                        res = twinRelation.FirstEdge;
+                        //if (prevRel != null)
+                        //    prevRel.SecondEdge = twinRelation.FirstEdge;
+                        //poly.Relations[i].SecondEdge = twinRelation.FirstEdge;
                     }
-                }
-                catch (InvalidOperationException e)
-                {
+                    catch (ArgumentOutOfRangeException e)
+                    {
 
+                    }
+                    // Recursive Moving further edge dependancies to be added
+                    poly.Relations[i].Visited = true;
+                }
+            }
+            for (var i = 0; i < poly.Relations.Count; i++)
+                if (poly.Relations[i].Visited != true && ((poly.Relations[i].FirstEdge.Item1, poly.Relations[i].FirstEdge.Item2) == temp || (poly.Relations[i].FirstEdge.Item2, poly.Relations[i].FirstEdge.Item1) == temp))
+                {
+                    MoveRelations(a, poly.Relations[i].RelatedPolygon, poly.Relations[i].ID, poly.Relations[i]);
+                    poly.Relations[i].FirstEdge = res;
                 }
         }
 
@@ -878,6 +931,92 @@ namespace GK_Projekt1
                 }
             }
             return ret;
+        }
+
+        private void SetFirstScene()
+        {
+            var tempPoly1 = new Polygon(Canvas1);
+            var tempVertexes1 = new List<Point>();
+            tempVertexes1.Add(new Point(70, 100));
+            tempVertexes1.Add(new Point(100, 200));
+            tempVertexes1.Add(new Point(200, 200));
+            tempVertexes1.Add(new Point(170, 100));
+            tempPoly1.Vertices = tempVertexes1;
+            tempPoly1._finished = true;
+            Polygons.Add(tempPoly1);
+
+            var tempPoly2 = new Polygon(Canvas1);
+            var tempVertexes2 = new List<Point>();
+            tempVertexes2.Add(new Point(350, 100));
+            tempVertexes2.Add(new Point(310, 400));
+            tempVertexes2.Add(new Point(450, 400));
+            tempVertexes2.Add(new Point(550, 100));
+            tempPoly2.Vertices = tempVertexes2;
+            tempPoly2._finished = true;
+            Polygons.Add(tempPoly2);
+
+            var tempPoly3 = new Polygon(Canvas1);
+            var tempVertexes3 = new List<Point>();
+            tempVertexes3.Add(new Point(80, 300));
+            tempVertexes3.Add(new Point(130, 500));
+            tempVertexes3.Add(new Point(250, 400));
+            tempPoly3.Vertices = tempVertexes3;
+            tempPoly3._finished = true;
+            Polygons.Add(tempPoly3);
+
+            var tempPoly4 = new Polygon(Canvas1);
+            var tempVertexes4 = new List<Point>();
+            tempVertexes4.Add(new Point(800, 100));
+            tempVertexes4.Add(new Point(600, 300));
+            tempVertexes4.Add(new Point(700, 500));
+            tempVertexes4.Add(new Point(900, 500));
+            tempVertexes4.Add(new Point(1000, 300));
+            tempPoly4.Vertices = tempVertexes4;
+            tempPoly4._finished = true;
+            Polygons.Add(tempPoly4);
+
+            var tempRel1 = new Relation();
+            tempRel1.FirstEdge = (tempPoly1.Vertices[2], tempPoly1.Vertices[3]);
+            tempRel1.RelatedPolygon = tempPoly2;
+            tempRel1.ID = 1;
+            tempRel1.Type = RelationTypes.Parallel;
+            tempPoly1.Relations.Add(tempRel1);
+            var tempRel2 = new Relation();
+            tempRel2.FirstEdge = (tempPoly2.Vertices[0], tempPoly2.Vertices[1]);
+            tempRel2.RelatedPolygon = tempPoly1;
+            tempRel2.ID = 1;
+            tempRel2.Type = RelationTypes.Parallel;
+            tempPoly2.Relations.Add(tempRel2);
+
+            var tempRel3 = new Relation();
+            tempRel3.FirstEdge = (tempPoly3.Vertices[0], tempPoly3.Vertices[1]);
+            tempRel3.RelatedPolygon = null;
+            tempRel3.ID = 2;
+            tempRel3.Type = RelationTypes.Const;
+            tempPoly3.Relations.Add(tempRel3);
+
+            var tempRel4 = new Relation();
+            tempRel4.FirstEdge = (tempPoly3.Vertices[1], tempPoly3.Vertices[2]);
+            tempRel4.RelatedPolygon = null;
+            tempRel4.ID = 3;
+            tempRel4.Type = RelationTypes.Const;
+            tempPoly3.Relations.Add(tempRel4);
+
+            var tempRel5 = new Relation();
+            tempRel5.FirstEdge = (tempPoly2.Vertices[2], tempPoly2.Vertices[3]);
+            tempRel5.RelatedPolygon = tempPoly4;
+            tempRel5.ID = 2;
+            tempRel5.Type = RelationTypes.Perpendicular;
+            tempPoly2.Relations.Add(tempRel5);
+            var tempRel6 = new Relation();
+            tempRel6.FirstEdge = (tempPoly4.Vertices[2], tempPoly4.Vertices[3]);
+            tempRel6.RelatedPolygon = tempPoly2;
+            tempRel6.ID = 2;
+            tempRel6.Type = RelationTypes.Perpendicular;
+            tempPoly4.Relations.Add(tempRel6);
+
+            _status.RelationCount = 3;
+            RedrawCanvas(Canvas1);
         }
 
         private void Canvas1_MouseWheel(object sender, MouseWheelEventArgs e)

@@ -90,6 +90,7 @@ namespace GK_Projekt1
                 btnPerpendicular.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
                 btnParallel.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
                 btnConstLength.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+                btnAddBezierEdge.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
             }
         }
 
@@ -107,6 +108,7 @@ namespace GK_Projekt1
             btnPerpendicular.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
             btnParallel.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
             btnConstLength.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+            btnAddBezierEdge.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
         }
 
         private void Button_Click_3(object sender, RoutedEventArgs e)
@@ -121,6 +123,7 @@ namespace GK_Projekt1
             btnPerpendicular.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
             btnParallel.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
             btnConstLength.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+            btnAddBezierEdge.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
         }
 
 
@@ -136,6 +139,7 @@ namespace GK_Projekt1
             btnPerpendicular.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
             btnParallel.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
             btnConstLength.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+            btnAddBezierEdge.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
         }
 
 
@@ -151,6 +155,7 @@ namespace GK_Projekt1
             btnMove.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
             btnParallel.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
             btnConstLength.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+            btnAddBezierEdge.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
         }
 
         private void btnParallel_Click(object sender, RoutedEventArgs e)
@@ -165,6 +170,7 @@ namespace GK_Projekt1
             btnMove.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
             btnPerpendicular.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
             btnConstLength.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+            btnAddBezierEdge.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
         }
 
         private void btnConstLength_Click(object sender, RoutedEventArgs e)
@@ -173,6 +179,22 @@ namespace GK_Projekt1
                 CancelInserting(e);
             _status.Mode = Modes.SettingConstLength;
             btnConstLength.Background = (Brush)new BrushConverter().ConvertFrom("#bee6fd");
+            btnParallel.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+            btnDelete.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+            btnNewPoly.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+            btnNewVertex.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+            btnMove.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+            btnPerpendicular.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+            btnAddBezierEdge.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+        }
+
+        private void btnAddBezierEdge_Click(object sender, RoutedEventArgs e)
+        {
+            if (Status.Mode == Modes.AddingInProgress)
+                CancelInserting(e);
+            _status.Mode = Modes.AddBezierEdge;
+            btnAddBezierEdge.Background = (Brush)new BrushConverter().ConvertFrom("#bee6fd");
+            btnConstLength.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
             btnParallel.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
             btnDelete.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
             btnNewPoly.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
@@ -285,6 +307,7 @@ namespace GK_Projekt1
                     {
                         _status.Mode = Modes.MovingVertex;
                         _status.CurrentPolygon = Polygons[i];
+                        _status.CurrentLine = (p, p);
                         _status.VertexInMove = Status.CurrentPolygon.Vertices.IndexOf(p);
                         break;
                     }
@@ -391,6 +414,7 @@ namespace GK_Projekt1
                             btnPerpendicular.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
                             btnParallel.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
                             btnConstLength.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+                            btnAddBezierEdge.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
                             RedrawCanvas(Canvas1);
                         }
                     }
@@ -415,6 +439,29 @@ namespace GK_Projekt1
                 btnPerpendicular.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
                 btnParallel.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
                 btnConstLength.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+                btnAddBezierEdge.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+                _status.Mode = Modes.Idle;
+                RedrawCanvas(Canvas1);
+            }
+            else if (Status.Mode == Modes.AddBezierEdge)
+            {
+                for (var i = 0; i < Polygons.Count; i++)
+                {
+                    var pair = Polygons[i].IsInsideAnyLine(point);
+                    if (pair.Item1 != new Point(-1, -1))
+                    {
+                        Polygons[i].AddBezierEdge(pair);
+                        break;
+                    }
+                }
+                btnMove.Background = (Brush)new BrushConverter().ConvertFrom("#bee6fd");
+                btnDelete.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+                btnNewPoly.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+                btnNewVertex.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+                btnPerpendicular.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+                btnParallel.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+                btnConstLength.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
+                btnAddBezierEdge.Background = (Brush)new BrushConverter().ConvertFrom("#dddddd");
                 _status.Mode = Modes.Idle;
                 RedrawCanvas(Canvas1);
             }
@@ -461,14 +508,31 @@ namespace GK_Projekt1
                 var isConst = false;
                 Relation rel = new Relation();
                 int count = 0;
+                var index = 0;
+                bool flag = false;
+                BezierEdge be = null;
                 foreach (var i in Status.CurrentPolygon.Relations)
+                {
                     if ((i.FirstEdge.Item1 == _status.CurrentPolygon.Vertices[Status.VertexInMove] || i.FirstEdge.Item2 == _status.CurrentPolygon.Vertices[Status.VertexInMove]) && i.Type == RelationTypes.Const)
                     {
-                        isConst = true;
-                        rel = i;
-                        count++;
+
                     }
-                if (isConst == true)
+                }
+                foreach (var i in Status.CurrentPolygon.Beziers)
+                {
+                    if (i.approxPoints.Contains(Status.CurrentLine.Item1))
+                    {
+                        index = i.approxPoints.FindIndex(x => x.Equals(_status.CurrentLine.Item1));
+                        flag = true;
+                        be = i;
+                        _status.CurrentLine = (new Point(-1, -1), new Point(-1, -1));
+                    }
+                }
+                if(flag == true)
+                {
+                    be.approxPoints[index] = point;
+                }
+                else if (isConst == true)
                 {
                     if (count < 2)
                     {
@@ -1023,6 +1087,7 @@ namespace GK_Projekt1
         {
 
         }
+
     }
 
     public struct Statuses
@@ -1052,6 +1117,7 @@ namespace GK_Projekt1
         AddingPerpendicularRelation,
         AddingParallelRelation,
         SettingConstLength,
+        AddBezierEdge,
         Idle
     }
 

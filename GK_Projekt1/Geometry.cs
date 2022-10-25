@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -20,12 +21,18 @@ namespace GK_Projekt1
         public int _clickAccuracy = 3;
         private List<Relation> _relations;
         public bool IsConstLength { get; set; }
+        public List<(Point, Point)> BezierEdges;
+        public List<BezierEdge> Beziers;
+        public List<Point> BezierPoints;
 
         public Polygon(Canvas canvas)
         {
             _vertices = new List<System.Windows.Point>();
             _canvas = canvas;
             _relations = new List<Relation>();
+            BezierEdges = new List<(Point, Point)>();
+            BezierPoints = new List<Point>();
+            Beziers = new List<BezierEdge>();
         }
 
         public List<System.Windows.Point> Vertices
@@ -67,13 +74,21 @@ namespace GK_Projekt1
         public void Draw(System.Windows.Controls.Canvas canvas)
         {
             for (int i = 0; i < _vertices.Count - 1; i++)
-                DrawLine(_vertices[i], _vertices[i + 1], _color, _lineSize, canvas);
+                if (!BezierPoints.Contains(_vertices[i]) && !BezierPoints.Contains(_vertices[i + 1]) && !BezierEdges.Contains((_vertices[i], _vertices[i + 1])) && !BezierEdges.Contains((_vertices[i + 1], _vertices[i])))
+                    DrawLine(_vertices[i], _vertices[i + 1], _color, _lineSize, canvas);
             if (_finished)
-                DrawLine(_vertices[0], _vertices[_vertices.Count - 1], _color, _lineSize, canvas);
+                if (!BezierPoints.Contains(_vertices[0]) && !BezierPoints.Contains(_vertices.Last()) && !BezierEdges.Contains((_vertices[0], _vertices.Last())) && !BezierEdges.Contains((_vertices.Last(), _vertices[0])))
+                    DrawLine(_vertices[0], _vertices[_vertices.Count - 1], _color, _lineSize, canvas);
             foreach (var i in Vertices)
                 DrawPoint(i, _vertexColor, _dotSize, canvas);
             foreach (var i in Relations)
                 DrawRelation(i);
+            foreach (var i in Beziers)
+            {
+                DrawBezier(i);
+                foreach (var j in i.approxPoints)
+                    DrawPoint(j, Colors.Blue, 5, _canvas);
+            }
         }
 
         public Line DrawLine(Point p1, Point p2, Color c, int size, Canvas canvas)
@@ -142,6 +157,53 @@ namespace GK_Projekt1
             _canvas.Children.Add(ret);
         }
 
+        // WPF Bezier logic inspired from here https://stackoverflow.com/questions/13940983/how-to-draw-bezier-curve-by-several-points
+        public void DrawBezier(BezierEdge be)
+        {
+            var bezierGuide = new Path();
+            bezierGuide.Stroke = Brushes.Red;
+            bezierGuide.StrokeThickness = 2;
+            // Guide to be added
+
+            var points = new Point[be.approxPoints.Count + 2];
+            points[0] = be.originalPoints.Item1;
+            points[points.Length - 1] = be.originalPoints.Item2;
+            for (var j = 1; j < be.approxPoints.Count; j++)
+                points[j] = be.approxPoints[j];
+            var b = CalculateBezier(points, 256);
+            PathFigure pf = new PathFigure(b.Points[0], new[] { b }, false);
+            PathFigureCollection pfc = new PathFigureCollection();
+            pfc.Add(pf);
+            var pge = new PathGeometry();
+            pge.Figures = pfc;
+            Path p = new Path();
+            p.Data = pge;
+            p.Stroke = new SolidColorBrush(Color.FromRgb(255, 0, 0));
+            _canvas.Children.Add(p);
+            foreach(var i in points)
+                this.Vertices.Add(i);
+        }
+
+        public PolyLineSegment CalculateBezier(Point[] controlPoints, int segmentCount)
+        {
+            Point[] points = new Point[segmentCount + 1];
+            for (int i = 0; i <= segmentCount; i++)
+            {
+                double t = (double)i / segmentCount;
+                points[i] = CalculateBezierPoint(t, controlPoints, 0, controlPoints.Length);
+            }
+            return new PolyLineSegment(points, true);
+        }
+
+        public Point CalculateBezierPoint(double t, Point[] controlPoints, int index, int count)
+        {
+            if (count == 1)
+                return controlPoints[index];
+            var P0 = CalculateBezierPoint(t, controlPoints, index, count - 1);
+            var P1 = CalculateBezierPoint(t, controlPoints, index + 1, count - 1);
+            return new Point((1 - t) * P0.X + t * P1.X, (1 - t) * P0.Y + t * P1.Y);
+        }
+
         public bool IsInsideFirstVertex(Point p)
         {
             if (IsInsideVertex(p, Vertices[0]) && Vertices.Count > 2)
@@ -197,7 +259,30 @@ namespace GK_Projekt1
             ret.ID = id;
             Relations.Add(ret);
         }
+
+        public void AddBezierEdge((Point p1, Point p2) edge)
+        {
+            var temp = new BezierEdge(edge);
+            Beziers.Add(temp);
+            BezierEdges.Add(edge);
+            BezierPoints = temp.approxPoints;
+        }
     }
+
+    public class BezierEdge
+    {
+        public (Point, Point) originalPoints;
+        public List<Point> approxPoints;
+
+        public BezierEdge((Point, Point) originalPoints, int approxCount = 1)
+        {
+            approxPoints = new List<Point>();
+            this.originalPoints = originalPoints;
+            for (int i = 0; i < approxCount; i++)
+                approxPoints.Add(new Point((originalPoints.Item1.X + originalPoints.Item2.X) / 2, (originalPoints.Item1.Y + originalPoints.Item2.Y) / 2));
+        }
+    }
+
     public class Relation
     {
         public (Point, Point) FirstEdge;
